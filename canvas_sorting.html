@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+    <head>
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+        <title>Canvas Test</title>
+    </head>
+
+    <body onload="resetAll();">
+        <canvas id="chart" width="500px" height="100px"></canvas>
+          <script type="text/javascript">
+              /*<![CDATA[*/
+              var ctx = document.getElementById('chart').getContext('2d');
+
+              var width = 20;
+              var vertical_scale = 5;
+              var animation_steps = 40;
+              var animation_step = 1;
+
+              var animator = null;
+              var swap_a = null;
+              var swap_b = null;
+
+              var swaps_to_perform = Array();
+
+              var array = Array();
+
+              function resetArray() {
+                  array = Array(10, 5, 11, 18, 2, 7, 8, 20, 10, 1, 3, 8, 16);
+                  drawAllBut();
+              }
+
+              function drawIndex(index, style, swap_index) {
+                  if (style && style == "hidden") {
+                      ctx.fillStyle = '#fff';
+                      ctx.strokeStyle = '#fff';
+                  }
+                  else if (style && style == "active") {
+                      ctx.fillStyle = '#f00';
+                      ctx.strokeStyle = '#ccc';
+                  }
+                  else {
+                      ctx.fillStyle = '#08f';
+                      ctx.strokeStyle = '#ccc';
+                  }
+                  ctx.beginPath();
+                  var x = index * width;
+                  var val = array[index] * vertical_scale;
+                  var y = 100-val;
+
+                  if (swap_index !== undefined) {
+                      var distance = (index - swap_index) * width;
+                      distance = parseInt((distance / animation_steps) * animation_step);
+                      x -= distance;
+                  }
+
+                  ctx.rect(x, y, width, val);
+                  ctx.fill();
+                  ctx.stroke();
+              }
+
+              function drawAllBut (do_not_draw_array) {
+                  ctx.fillStyle = '#fff';
+                  ctx.rect(0, 0, 500, 100);
+                  ctx.fill();
+                  for (var index=0; index < array.length; index++) {
+                      if (! (do_not_draw_array && contains(do_not_draw_array, index)))
+                          drawIndex(index);
+                      else
+                          drawIndex(index, "hidden");
+                  }
+              }
+
+
+              function start_swapping_animation() {
+                  var swap = swaps_to_perform.shift();
+                  if (swap && animation_step == 1) {
+                      swap_a = swap[0];
+                      swap_b = swap[1];
+                      animator = setInterval("swap()", 10);
+                  }
+                  else if (animation_step == 1) {
+                      //no more swaps... done
+                      document.getElementById("number_of_comparisons").innerHTML = "" + number_of_comparisons;
+                      document.getElementById("number_of_swaps").innerHTML = "" + number_of_swaps;
+                  }
+              }
+
+              function swap() {
+                  animation_step++;
+                  drawAllBut([swap_a, swap_b]);
+                  drawIndex(swap_a, "active", swap_b);
+                  drawIndex(swap_b, "active", swap_a);
+
+                  if (animation_step == animation_steps - 1) {
+                      window.clearInterval(animator);
+                      doSwap(swap_b, swap_a, 1);
+                      animation_step = 1;
+                      drawAllBut();
+                      start_swapping_animation();
+                  }
+              }
+
+
+              function contains(a, obj) {
+                  var i = a.length;
+                  while (i--) {
+                      if (a[i] === obj) {
+                          return true;
+                      }
+                  }
+                  return false;
+              }
+
+              function resetAll() {
+                  number_of_comparisons = 0;
+                  number_of_swaps = 0;
+                  document.getElementById("number_of_comparisons").innerHTML = "";
+                  document.getElementById("number_of_swaps").innerHTML = "";
+                  resetArray();
+                  swaps_to_perform = Array();
+              }
+
+              function doSort(type) {
+                  resetAll();
+                  if (type == "selection") {
+                      selectionSort();
+                  }
+                  resetArray();
+                  start_swapping_animation();
+              }
+
+              function doSwap(a, b, do_not_push) {
+                  var x = array[b];
+                  array[b] = array[a];
+                  array[a] = x;
+                  if (! do_not_push) {
+                      swaps_to_perform.push(Array(a, b));
+                      number_of_swaps++;
+                  }
+              }
+
+              function selectionSort() {
+                  var i; // The starting index of the minimum finding scan
+                  var j; // The running index of the minimum finding scan
+
+                  for (i = 0; i < array.length; i++) {
+                      var m = i; // The index of the minimum element
+                      var x = array[i]; // The minimum value
+
+                      for (j = i + 1; j < array.length; j++) {
+                          if (array[j] < x) {
+                              number_of_comparisons++;
+                              m = j;
+                              x = array[j];
+                          }
+                      }
+
+                      if (m != i) {
+                          doSwap(m, i);
+                      }
+
+                  }
+
+              }
+
+              /*]]>*/
+        </script>
+        <button onclick="resetAll();">reset</button>
+        <button onclick="doSort('selection');">selectionSort</button>
+        <div>
+            Number of comparisons: <span id="number_of_comparisons"></span><br>
+            Number of swaps: <span id="number_of_swaps"></span>
+        </div>
+    </body>
+</html>
