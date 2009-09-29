@@ -13,8 +13,8 @@
 
               var width = 20;
               var vertical_scale = 5;
-              var animation_steps = 40;
-              var animation_step = 1;
+              var swap_movement_steps = 40;
+              var swap_movement_step = 1;
 
               var animator = null;
               var swap_a = null;
@@ -22,7 +22,8 @@
 
               var animator_is_playing = 0;
 
-              var swaps_to_perform = Array();
+              var sorted_indices = Array();
+              var animation_steps = Array();
 
               var array = Array();
 
@@ -41,8 +42,14 @@
                       ctx.strokeStyle = '#ccc';
                   }
                   else {
-                      ctx.fillStyle = '#08f';
-                      ctx.strokeStyle = '#ccc';
+                      if (contains(sorted_indices, index)) {
+                          ctx.fillStyle = '#999';
+                          ctx.strokeStyle = '#ccc';
+                      }
+                      else {
+                          ctx.fillStyle = '#08f';
+                          ctx.strokeStyle = '#ccc';
+                      }
                   }
                   ctx.beginPath();
                   var x = index * width;
@@ -51,7 +58,7 @@
 
                   if (swap_index !== undefined) {
                       var distance = (index - swap_index) * width;
-                      distance = parseInt((distance / animation_steps) * animation_step);
+                      distance = parseInt((distance / swap_movement_steps) * swap_movement_step);
                       x -= distance;
                   }
 
@@ -73,43 +80,52 @@
               }
 
 
-              function start_swapping_animation() {
+              function start_animation() {
 
-                  document.getElementById("debug").innerHTML = swaps_to_perform;
+                  document.getElementById("debug").innerHTML = animation_steps;
                   if (animator_is_playing != 1) {
                       window.clearInterval(animator);
-                      animator = setInterval("start_swapping_animation()", 100);
+                      animator = setInterval("start_animation()", 100);
                       return;
                   }
 
-                  var swap = swaps_to_perform.shift();
-                  if (swap && animation_step == 1) {
-                      swap_a = swap[0];
-                      swap_b = swap[1];
+                  var step = animation_steps.shift();
+
+                  if (step && step[0] == "swap" && swap_movement_step == 1) {
+                      swap_a = step[1];
+                      swap_b = step[2];
                       window.clearInterval(animator);
                       animator = setInterval("swap()", 10);
                       animator_is_playing = 1;
+                      return;
                   }
-                  else if (animation_step == 1) {
-                      //no more swaps... done
-                      document.getElementById("number_of_comparisons").innerHTML = "" + number_of_comparisons;
-                      document.getElementById("number_of_swaps").innerHTML = "" + number_of_swaps;
-                      animator_is_playing = 0;
+
+                  if (step && step[0] == "sorted") {
+                      sorted_indices.push(step[1]);
+                      drawAllBut();
+                      start_animation();
+                      return;
                   }
+
+                  //no more animation steps
+                  document.getElementById("number_of_comparisons").innerHTML = "" + number_of_comparisons;
+                  document.getElementById("number_of_swaps").innerHTML = "" + number_of_swaps;
+                  animator_is_playing = 0;
+
               }
 
               function swap() {
-                  animation_step++;
+                  swap_movement_step++;
                   drawAllBut([swap_a, swap_b]);
                   drawIndex(swap_a, "active", swap_b);
                   drawIndex(swap_b, "active", swap_a);
 
-                  if (animation_step == animation_steps - 1) {
+                  if (swap_movement_step == swap_movement_steps - 1) {
                       window.clearInterval(animator);
                       doSwap(swap_b, swap_a, 1);
-                      animation_step = 1;
+                      swap_movement_step = 1;
                       drawAllBut();
-                      start_swapping_animation();
+                      start_animation();
                   }
               }
 
@@ -129,8 +145,9 @@
                   number_of_swaps = 0;
                   document.getElementById("number_of_comparisons").innerHTML = "";
                   document.getElementById("number_of_swaps").innerHTML = "";
+                  sorted_indices = Array();
                   resetArray();
-                  swaps_to_perform = Array();
+                  animation_steps = Array();
               }
 
               function doSort(type) {
@@ -143,7 +160,7 @@
                   }
                   resetArray();
                   animator_is_playing = 1;
-                  start_swapping_animation();
+                  start_animation();
               }
 
               function doSwap(a, b, do_not_push) {
@@ -151,7 +168,7 @@
                   array[b] = array[a];
                   array[a] = x;
                   if (! do_not_push) {
-                      swaps_to_perform.push(Array(a, b));
+                      animation_steps.push(Array("swap", a, b));
                       number_of_swaps++;
                   }
               }
@@ -176,6 +193,7 @@
                           doSwap(m, i);
                       }
 
+                      animation_steps.push(["sorted", i]);
                   }
 
               }
