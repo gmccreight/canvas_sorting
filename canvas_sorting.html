@@ -18,6 +18,8 @@
               var num_animation_steps = 40;
               var animation_step_num = 0;
 
+              var last_selected = 0;
+
               var animator = null;
 
               var swap_a = null;
@@ -25,6 +27,7 @@
 
               var scan_a = null;
               var scan_b = null;
+              var scan_c = null;
 
               var animator_is_playing = 0;
 
@@ -49,6 +52,10 @@
                       ctx.strokeStyle = '#ccc';
                   }
                   else if (style && style == "scan") {
+                      ctx.fillStyle = '#999';
+                      ctx.strokeStyle = '#ccc';
+                  }
+                  else if (style && style == "scan_selected") {
                       ctx.fillStyle = '#666';
                       ctx.strokeStyle = '#ccc';
                   }
@@ -65,8 +72,8 @@
                   ctx.beginPath();
                   var x = index * width;
                   var val = array[index] * vertical_scale;
-                  if (style && style == "scan") {
-                      val = 10;
+                  if (style && style == "scan" || style == "scan_selected") {
+                      val = 6;
                   }
                   var y = 100-val;
 
@@ -119,8 +126,9 @@
                   if (step && step[0] == "scan_from" && animation_step_num == 0) {
                       scan_a = step[1];
                       scan_b = step[2];
+                      scan_c = step[3];
                       window.clearInterval(animator);
-                      animator = setInterval("scan()", 200);
+                      animator = setInterval("scan()", 100);
                       animator_is_playing = 1;
                       return;
                   }
@@ -157,16 +165,26 @@
               function scan() {
                   animation_step_num++;
 
+                  var current_index = scan_a + animation_step_num - 1;
                   var number_of_steps_in_scan = scan_b - scan_a;
+                  var number_of_elements = scan_c - scan_a;
 
-                  if (number_of_steps_in_scan < 1 || animation_step_num > number_of_steps_in_scan + 1) {
+                  if (number_of_steps_in_scan < 1 || animation_step_num > number_of_elements) {
                       window.clearInterval(animator);
                       animation_step_num = 0;
+                      last_selected = 0;
                       start_animation();
                       return;
                   }
 
                   drawAllExcept();
+                  if (animation_step_num == 1 || array[current_index] < array[last_selected]) {
+                      last_selected = current_index;
+                      drawIndex(current_index, "scan_selected");
+                  }
+                  else {
+                      drawIndex(last_selected, "scan_selected");
+                  }
                   drawIndex(scan_a + (animation_step_num - 1), "scan");
 
               }
@@ -249,7 +267,7 @@
                           }
                       }
 
-                      animation_steps.push(["scan_from", i, m]);
+                      animation_steps.push(["scan_from", i, m, array.length]);
 
                       if (m != i) {
                           doSwap(m, i);
