@@ -200,6 +200,9 @@
                   else if (type == "shell") {
                       shellSort();
                   }
+                  else if (type == "bubble") {
+                      bubbleSort();
+                  }
                   resetArray();
                   animator_is_playing = 1;
                   start_animation();
@@ -214,6 +217,21 @@
                       number_of_swaps++;
                   }
               }
+
+                function bubbleSort() {
+                  var i;             // The initial index for the bubbling scan.
+                  var j;             // The running index for the bubbling scan.
+                  for ( i = array.length; i; i-- ) {
+                      for ( j = 1; j <= i; j++ ) {
+                          number_of_comparisons++;
+                          // Swap if needed.
+                          if ( array[ j - 1 ] > array[ j ] ) {
+                              doSwap(j, j - 1);
+                          }
+                      }
+                      animation_steps.push(["add_to_sorted", i]);
+                  }
+                }
 
               function selectionSort() {
                   var i; // The starting index of the minimum finding scan
@@ -270,6 +288,7 @@
         <button onclick="animator_is_playing=0;">pause</button>
         <button onclick="animator_is_playing=1;">play</button>
         <button onclick="doSort('selection');">selectionSort</button>
+        <button onclick="doSort('bubble');">bubbleSort</button>
         <button onclick="doSort('shell');">shellSort</button>
         <div>
             Number of comparisons: <span id="number_of_comparisons"></span><br>
