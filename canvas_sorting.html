@@ -6,29 +6,24 @@
     </head>
 
     <body onload="resetAll();">
-        <canvas id="chart" width="500px" height="100px"></canvas>
+        <canvas id="chart" width="700px" height="100px"></canvas>
           <script type="text/javascript">
               /*<![CDATA[*/
 
               var debug = 1;
 
+              var global_speed = 20;
+              var do_step = 0;
+
               var width = 20;
               var vertical_scale = 5;
 
-              var num_animation_steps = 40;
+              var num_swap_steps = 40;
               var animation_step_num = 0;
 
               var last_selected = 0;
 
               var animator = null;
-
-              var swap_a = null;
-              var swap_b = null;
-
-              var scan_a = null;
-              var scan_b = null;
-              var scan_c = null;
-
               var animator_is_playing = 0;
 
               var sorted_indices = Array();
@@ -38,8 +33,16 @@
               var array = Array();
 
               function resetArray() {
-                  array = Array(10, 5, 11, 18, 2, 7, 8, 20, 10, 1, 3, 8, 16, 3, 12, 5, 7, 8, 17, 10);
+                  array = Array(10, 5, 11, 18, 2, 7, 8, 20, 10, 1, 3, 8, 16, 3, 12, 5, 7, 8, 17, 10, 4, 6, 9, 2, 1, 13, 5, 2, 17, 9);
                   drawAllExcept();
+              }
+
+              function speedUp() {
+                  if (global_speed > 2)
+                      global_speed -= 2;
+
+                  if (num_swap_steps > 10)
+                      num_swap_steps -= 5;
               }
 
               function drawIndex(index, style, swap_index) {
@@ -48,15 +51,15 @@
                       ctx.strokeStyle = '#fff';
                   }
                   else if (style && style == "active") {
-                      ctx.fillStyle = '#f00';
-                      ctx.strokeStyle = '#ccc';
+                      ctx.fillStyle = '#08f';
+                      ctx.strokeStyle = '#f00';
                   }
                   else if (style && style == "scan") {
                       ctx.fillStyle = '#999';
                       ctx.strokeStyle = '#ccc';
                   }
                   else if (style && style == "scan_selected") {
-                      ctx.fillStyle = '#666';
+                      ctx.fillStyle = '#fc0';
                       ctx.strokeStyle = '#ccc';
                   }
                   else {
@@ -72,14 +75,15 @@
                   ctx.beginPath();
                   var x = index * width;
                   var val = array[index] * vertical_scale;
+                  var y = 94-val;
                   if (style && style == "scan" || style == "scan_selected") {
                       val = 6;
+                      y = 94;
                   }
-                  var y = 100-val;
 
                   if (swap_index !== undefined) {
                       var distance = (index - swap_index) * width;
-                      distance = parseInt((distance / num_animation_steps) * animation_step_num);
+                      distance = parseInt((distance / num_swap_steps) * animation_step_num);
                       x -= distance;
                   }
 
@@ -90,7 +94,7 @@
 
               function drawAllExcept (do_not_draw_array) {
                   ctx.fillStyle = '#fff';
-                  ctx.rect(0, 0, 500, 100);
+                  ctx.rect(0, 0, 700, 100);
                   ctx.fill();
                   for (var index=0; index < array.length; index++) {
                       if (! (do_not_draw_array && contains(do_not_draw_array, index)))
@@ -101,79 +105,82 @@
               }
 
 
-              function start_animation() {
+              function run_animation_queue() {
 
                   if (debug)
                       document.getElementById("debug").innerHTML = animation_steps;
 
+                  // The animation is paused.
                   if (animator_is_playing != 1) {
+                    if (do_step == 1) {
+                      do_step = 0;
+                    }
+                    else {
                       window.clearInterval(animator);
-                      animator = setInterval("start_animation()", 100);
+                      animator = setInterval("run_animation_queue()", 10 * global_speed);
                       return;
+                    }
                   }
+
 
                   var step = animation_steps.shift();
 
                   if (step && step[0] == "swap" && animation_step_num == 0) {
-                      swap_a = step[1];
-                      swap_b = step[2];
                       window.clearInterval(animator);
-                      animator = setInterval("swap()", 10);
-                      animator_is_playing = 1;
+                      animator = setInterval(function() { anim_swap(step[1], step[2]); }, 1 * global_speed);
+                      document.getElementById('info').innerHTML = "swapping positions";
                       return;
                   }
 
                   if (step && step[0] == "scan_from" && animation_step_num == 0) {
-                      scan_a = step[1];
-                      scan_b = step[2];
-                      scan_c = step[3];
                       window.clearInterval(animator);
-                      animator = setInterval("scan()", 100);
-                      animator_is_playing = 1;
+                      animator = setInterval(function() { anim_scan(step[1], step[2], step[3]); }, 10 * global_speed);
+                      document.getElementById('info').innerHTML = 'scanning for <span style="color:#fc0">minimum value</span> in unsorted area';
                       return;
                   }
 
                   if (step && step[0] == "add_to_sorted") {
+                      document.getElementById('info').innerHTML = 'updating sorted area';
                       sorted_indices.push(step[1]);
                       drawAllExcept();
-                      start_animation();
+                      run_animation_queue();
                       return;
                   }
 
                   //no more animation steps
                   document.getElementById("number_of_comparisons").innerHTML = "" + number_of_comparisons;
                   document.getElementById("number_of_swaps").innerHTML = "" + number_of_swaps;
-                  animator_is_playing = 0;
+                  document.getElementById('info').innerHTML = "done";
 
               }
 
-              function swap() {
+              function anim_swap(a, b) {
                   animation_step_num++;
-                  drawAllExcept([swap_a, swap_b]);
-                  drawIndex(swap_a, "active", swap_b);
-                  drawIndex(swap_b, "active", swap_a);
+                  drawAllExcept([a, b]);
+                  drawIndex(a, "active", b);
+                  drawIndex(b, "active", a);
 
-                  if (animation_step_num == num_animation_steps - 1) {
+                  if (animation_step_num == num_swap_steps - 1) {
                       window.clearInterval(animator);
-                      doSwap(swap_b, swap_a, 1);
+                      doSwap(b, a, 1);
                       animation_step_num = 0;
                       drawAllExcept();
-                      start_animation();
+                      run_animation_queue();
                   }
               }
 
-              function scan() {
+              function anim_scan(a, b, c) {
                   animation_step_num++;
 
-                  var current_index = scan_a + animation_step_num - 1;
-                  var number_of_steps_in_scan = scan_b - scan_a;
-                  var number_of_elements = scan_c - scan_a;
+                  var current_index = a + animation_step_num - 1;
+                  var number_of_steps_in_scan = b - a;
+                  var number_of_elements = c - a;
 
                   if (number_of_steps_in_scan < 1 || animation_step_num > number_of_elements) {
                       window.clearInterval(animator);
                       animation_step_num = 0;
                       last_selected = 0;
-                      start_animation();
+                      run_animation_queue();
                       return;
                   }
 
@@ -185,19 +192,10 @@
                   else {
                       drawIndex(last_selected, "scan_selected");
                   }
-                  drawIndex(scan_a + (animation_step_num - 1), "scan");
+                  drawIndex(a + (animation_step_num - 1), "scan");
 
               }
 
-              function contains(a, obj) {
-                  var i = a.length;
-                  while (i--) {
-                      if (a[i] === obj) {
-                          return true;
-                      }
-                  }
-                  return false;
-              }
 
               function resetAll() {
                   document.getElementById("number_of_comparisons").innerHTML = "";
@@ -208,6 +206,10 @@
                   sorted_indices = Array();
                   resetArray();
                   animation_steps = Array();
+
+                  global_speed = 10;
+                  num_swap_steps = 40;
+                  do_step = 0;
               }
 
               function doSort(type) {
@@ -223,7 +225,7 @@
                   }
                   resetArray();
                   animator_is_playing = 1;
-                  start_animation();
+                  run_animation_queue();
               }
 
               function doSwap(a, b, do_not_push) {
@@ -299,20 +301,35 @@
                   }
                 }
 
+              function contains(a, obj) {
+                  var i = a.length;
+                  while (i--) {
+                      if (a[i] === obj) {
+                          return true;
+                      }
+                  }
+                  return false;
+              }
 
               /*]]>*/
         </script>
-        <button onclick="resetAll();">reset</button>
-        <button onclick="animator_is_playing=0;">pause</button>
-        <button onclick="animator_is_playing=1;">play</button>
-        <button onclick="doSort('selection');">selectionSort</button>
-        <button onclick="doSort('bubble');">bubbleSort</button>
-        <button onclick="doSort('shell');">shellSort</button>
+        <div style="margin-bottom:10px;margin-top:10px;">
+            <button onclick="resetAll();">reset</button>
+            <button onclick="animator_is_playing=0;">pause</button>
+            <button onclick="do_step=1;">step</button>
+            <button onclick="animator_is_playing=1;">play</button>
+            <button onclick="speedUp()">Speed Up</button>
+        </div>
+        <div style="margin-bottom:10px;margin-top:10px;">
+            <button onclick="doSort('selection');">selectionSort</button>
+            <button onclick="doSort('bubble');">bubbleSort</button>
+            <button onclick="doSort('shell');">shellSort</button>
+        </div>
+        <div id="info"></div>
         <div>
             Number of comparisons: <span id="number_of_comparisons"></span><br>
             Number of swaps: <span id="number_of_swaps"></span>
         </div>
-        <div id="debug">
-        </div>
+        <div id="debug"></div>
     </body>
 </html>
